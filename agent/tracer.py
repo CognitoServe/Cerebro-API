@@ -34,7 +34,18 @@ def print_trace(iteration: int, phase: Phase, content: str) -> None:
     phase_pad   = phase.ljust(11)
     line        = f"[{timestamp}] [{iter_label} | {phase_pad}] {content}"
 
-    print(line, flush=True)
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        try:
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+                print(line, flush=True)
+            else:
+                print(line.encode("ascii", errors="replace").decode("ascii"), flush=True)
+        except Exception:
+            # Fallback if print still fails
+            pass
 
     fh = _get_log_handle()
     if fh:
@@ -45,9 +56,28 @@ def print_trace(iteration: int, phase: Phase, content: str) -> None:
 def print_separator(label: str = "") -> None:
     """Print a visual divider."""
     width = 72
+    char = "─"
+    try:
+        # test if char can be printed
+        char.encode(sys.stdout.encoding or "ascii")
+    except Exception:
+        char = "-"
+
     if label:
         pad  = (width - len(label) - 2) // 2
-        line = "─" * pad + f" {label} " + "─" * pad
+        line = char * pad + f" {label} " + char * pad
     else:
-        line = "─" * width
-    print(line, flush=True)
+        line = char * width
+
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        try:
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8")
+                print(line, flush=True)
+            else:
+                print(line.encode("ascii", errors="replace").decode("ascii"), flush=True)
+        except Exception:
+            pass
+

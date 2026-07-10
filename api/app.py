@@ -39,6 +39,9 @@ from agent.runner        import run_agent
 from api.models          import JobAccepted, JobStatus, ResearchRequest
 from tools.memory        import clear_job_memory
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
