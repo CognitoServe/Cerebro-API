@@ -1,0 +1,24 @@
+Python 3.13 Performance Improvements
+
+Python 3.13 is one of the most significant performance-focused releases in CPython's history. Here is a summary of the key improvements.
+
+Free-Threaded Mode (No GIL)
+Python 3.13 introduces experimental support for running CPython without the Global Interpreter Lock (GIL). This is implemented under PEP 703, authored by Sam Gross. To use it, install the free-threaded build (python3.13t on most systems) or build CPython with --disable-gil. In free-threaded mode, multiple threads can truly execute Python bytecode in parallel on multi-core hardware. This is still experimental and some C extensions may not be compatible.
+
+JIT Compiler (Experimental)
+Python 3.13 ships with a copy-and-patch JIT compiler, described in PEP 744. The JIT compiles hot loops into native machine code at runtime using a technique inspired by LuaJIT. It is disabled by default and can be enabled with the PYTHON_JIT environment variable. Early benchmarks show 5–30% speedups on CPU-bound code.
+
+Improved Error Messages
+The interpreter now produces significantly more helpful error messages, including suggestions for mistyped attribute names and missing imports. This does not affect performance directly but improves developer productivity.
+
+Specialised Bytecode
+The adaptive specialising interpreter (introduced in 3.11) has been extended further. The interpreter now generates specialised bytecodes for common patterns involving integer arithmetic, list indexing, and dictionary lookups.
+
+Faster Startup
+Module import times have been reduced through a new frozen stdlib mechanism. Many standard library modules are now precompiled and embedded directly into the interpreter, reducing disk I/O at startup.
+
+Memory Allocator Improvements
+The pymalloc small object allocator has been tuned to reduce fragmentation for workloads that create many small, short-lived objects (a common pattern in web frameworks and data pipelines).
+
+Benchmarks
+On the official pyperformance benchmark suite, Python 3.13 is approximately 5% faster than Python 3.12 in the default (GIL-enabled) mode, and significantly faster for multi-threaded workloads when the free-threaded build is used.
