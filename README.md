@@ -29,22 +29,22 @@ Cerebro is a next-generation backend service that provides a completely autonomo
 
 ```mermaid
 graph TD
-    User([Client / User]) -->|POST /research| API(FastAPI Endpoint)
-    API -->|Returns 202 Job ID| User
-    API -->|Spawns Background Task| Orchestrator[Agent Orchestrator]
+    User(["Client / User"]) -->|POST /research| API("FastAPI Endpoint")
+    API -->|"Returns 202 Job ID"| User
+    API -->|"Spawns Background Task"| Orchestrator["Agent Orchestrator"]
     
-    Orchestrator --> LLM{LLM (gpt-4o-mini)}
+    Orchestrator --> LLM{"LLM (gpt-4o-mini)"}
     
-    LLM -->|Plan & Execute| Registry[Tool Registry]
+    LLM -->|"Plan & Execute"| Registry["Tool Registry"]
     
-    Registry -->|asyncio.gather| WebSearch[Web Search (Tenacity + Backoff)]
-    Registry -->|asyncio.gather| Calc[Calculator]
-    Registry -->|asyncio.gather| Memory[RAG Memory Engine]
+    Registry -->|"asyncio.gather"| WebSearch["Web Search (Tenacity + Backoff)"]
+    Registry -->|"asyncio.gather"| Calc["Calculator"]
+    Registry -->|"asyncio.gather"| Memory["RAG Memory Engine"]
     
-    Memory --> Isolate[(Vector Store per job_id)]
+    Memory --> Isolate[("Vector Store per job_id")]
     
-    Orchestrator -->|Final Report| Result[(In-Memory Job Store)]
-    User -->|GET /status/{job_id}| Result
+    Orchestrator -->|"Final Report"| Result[("In-Memory Job Store")]
+    User -->|"GET /status/{job_id}"| Result
 ```
 
 ---
@@ -98,7 +98,7 @@ Send a POST request to dispatch the agent into the background.
 ```bash
 curl -X POST "http://localhost:8000/research" \
      -H "Content-Type: application/json" \
-     -d '{"query": "Analyze the latest performance metrics of FastAPI vs Litestar."}'
+     -d '{"question": "Analyze the latest performance metrics of FastAPI vs Litestar."}'
 ```
 **Response:**
 ```json
@@ -130,6 +130,62 @@ curl -X GET "http://localhost:8000/status/5117f21d-597e-4eb6-9a13-3c5e76746472"
     ]
   }
 }
+```
+
+---
+
+## 🎭 Real-Time Test Cases
+
+Want to see the orchestrator flex its muscles in real-time? We've included a rich terminal demo script that dispatches 4 complex tasks concurrently and polls their status live.
+
+The test cases include:
+1. **The Deep Synthesis Test:** Researching and synthesizing the architectural differences between FastAPI and Litestar.
+2. **The Multi-Tool Reasoning Test:** Calculating compound interest and pulling live US inflation data to estimate real returns.
+3. **Strict Isolation (Jobs A & B):** Two jobs launched at the exact same millisecond that save conflicting passwords into memory ("ALPHA" vs "OMEGA") and immediately recall them, proving perfect vector isolation.
+
+### Run the Demo
+Make sure your server is running in one terminal:
+```bash
+uvicorn api.app:app --host 0.0.0.0 --port 8000
+```
+Then, in another terminal, run the demo script:
+```bash
+python examples/real_time_demo.py
+```
+
+### Example Live Output
+Here is an example of the reports generated concurrently by the demo script:
+
+```text
+=== CEREBRO API REAL-TIME DEMO ===
+
+Dispatching 4 jobs concurrently...
+
+[OK] The Deep Synthesis Test COMPLETED!
+  Topic: core architectural differences between FastAPI and Litestar
+  Summary: FastAPI leverages Starlette and Pydantic for high performance and automatic data validation, making it suitable for high-throughput applications. In contrast, Litestar is designed as a lightweight ASGI framework with a focus on flexibility and extensibility, offering features like dependency injection.
+    - {'claim': 'FastAPI is built on Starlette and Pydantic, providing high performance, automatic data validation, and serialization.', 'source': 'memory', 'confidence': 'high'}
+    - {'claim': 'Litestar has demonstrated high performance with benchmarks showing 12.4K requests per second and low cold start latency.', 'source': 'memory', 'confidence': 'high'}
+------------------------------------------------------------
+
+[OK] The Multi-Tool Reasoning Test COMPLETED!
+  Topic: Calculate the compound interest of $15,000 at 7% over 10 years and the estimated real return.
+  Summary: The compound interest earned on an investment of $15,000 at a rate of 7% over 10 years is approximately $14,507.27, resulting in a total amount of about $29,507.27. Considering the current US inflation rate, the estimated real return can be calculated by adjusting the nominal return.
+    - {'claim': 'The total amount after 10 years will be approximately $29,507.27.', 'source': 'agent_knowledge', 'confidence': 'high'}
+    - {'claim': 'The US inflation rate is calculated and integrated into the real return.', 'source': 'web_search', 'confidence': 'high'}
+------------------------------------------------------------
+
+[OK] Strict Isolation (Job A) COMPLETED!
+  Topic: Memorization of Secret Phrase
+  Summary: The secret phrase 'THE EAGLE HAS LANDED' was successfully stored in the isolated memory vector store and immediately recalled without interference from concurrent background jobs.
+    - {'claim': 'The phrase is THE EAGLE HAS LANDED.', 'source': 'memory', 'confidence': 'high'}
+------------------------------------------------------------
+
+[OK] Strict Isolation (Job B) COMPLETED!
+  Topic: Memorization of Secret Phrase
+  Summary: The secret phrase 'THE CONDOR HAS FLOWN' was successfully stored in the isolated memory vector store and immediately recalled without interference from concurrent background jobs.
+    - {'claim': 'The phrase is THE CONDOR HAS FLOWN.', 'source': 'memory', 'confidence': 'high'}
+------------------------------------------------------------
 ```
 
 ---

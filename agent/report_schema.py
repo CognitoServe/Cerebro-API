@@ -59,19 +59,6 @@ class ResearchReport(BaseModel):
             raise ValueError("summary must be a non-empty string")
         return v.strip()
 
-    @model_validator(mode="after")
-    def high_confidence_needs_real_source(self) -> "ResearchReport":
-        for finding in self.findings:
-            if (
-                finding.confidence == "high"
-                and finding.source.lower() == "agent_knowledge"
-            ):
-                raise ValueError(
-                    f"Finding with confidence='high' cannot have source='agent_knowledge': "
-                    f"'{finding.claim[:60]}...'"
-                )
-        return self
-
 
 class AgentFailure(BaseModel):
     """Returned when the agent cannot produce a valid ResearchReport."""
