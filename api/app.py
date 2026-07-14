@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
@@ -56,11 +57,22 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
-# In-memory job store
+# In-memory job store & background task tracker
 # NOTE: Does not survive process restart.  Replace with Redis for production.
 # ---------------------------------------------------------------------------
 
 _jobs: dict[str, dict] = {}
+_background_tasks: set[asyncio.Task] = set()
+
+_JOB_TTL_SECONDS = 3600  # keep results for 1 hour
+
+def _evict_expired() -> None:
+    now = time.time()
+    expired = [k for k, v in _jobs.items()
+               if v.get("_ts") and now - v["_ts"] > _JOB_TTL_SECONDS
+               and v["status"] in ("done", "failed")]
+    for k in expired:
+        _jobs.pop(k, None)
 
 # ---------------------------------------------------------------------------
 # Background task runner
@@ -79,20 +91,36 @@ async def _run_job(job_id: str, question: str) -> None:
         result = await run_agent(question, job_id=job_id)
     except Exception as exc:  # noqa: BLE001
         log.error("[job=%s] Uncaught exception in run_agent: %s", job_id, exc)
-        _jobs[job_id] = {"status": "failed", "detail": f"Internal error: {exc}"}
+        _jobs[job_id] = {
+            "status": "failed",
+            "detail": f"Internal error: {exc}",
+            "_ts": time.time(),
+        }
         return
     finally:
         # Always release the per-job memory store when the job finishes
         clear_job_memory(job_id)
 
     if isinstance(result, ResearchReport):
-        _jobs[job_id] = {"status": "done", "result": result.model_dump()}
+        _jobs[job_id] = {
+            "status": "done",
+            "result": result.model_dump(),
+            "_ts": time.time(),
+        }
         log.info("[job=%s] Done — report has %d findings", job_id, len(result.findings))
     elif isinstance(result, AgentFailure):
-        _jobs[job_id] = {"status": "failed", "detail": result.detail}
+        _jobs[job_id] = {
+            "status": "failed",
+            "detail": result.detail,
+            "_ts": time.time(),
+        }
         log.warning("[job=%s] Failed — reason: %s | %s", job_id, result.reason, result.detail)
     else:
-        _jobs[job_id] = {"status": "failed", "detail": "Unexpected result type from run_agent"}
+        _jobs[job_id] = {
+            "status": "failed",
+            "detail": "Unexpected result type from run_agent",
+            "_ts": time.time(),
+        }
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -110,11 +138,16 @@ async def post_research(body: ResearchRequest) -> JobAccepted:
     Accept a research question and immediately return a job_id.
     The agent runs as a background asyncio task.
     """
+    _evict_expired()
+
     job_id = str(uuid4())
     _jobs[job_id] = {"status": "pending"}
 
     # asyncio.create_task schedules the coroutine without blocking the response
-    asyncio.create_task(_run_job(job_id, body.question))
+    # We maintain a strong reference in _background_tasks to prevent garbage collection mid-run
+    task = asyncio.create_task(_run_job(job_id, body.question))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
     return JobAccepted(job_id=job_id, status="pending")
 
@@ -137,7 +170,10 @@ async def get_status(job_id: str) -> JobStatus:
     if entry is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
 
-    return JobStatus(**entry)
+    # Strip the internal timestamp before returning
+    entry_copy = entry.copy()
+    entry_copy.pop("_ts", None)
+    return JobStatus(**entry_copy)
 
 
 # ---------------------------------------------------------------------------
