@@ -19,8 +19,8 @@ Cerebro is a next-generation backend service that provides a completely autonomo
 
 **Why it's different:**
 * **True Concurrency:** Tool executions (like heavy web searches or API calls) are dispatched concurrently using `asyncio.gather`, slashing execution time.
-* **Strict Memory Isolation:** Each background job gets a globally unique `job_id`, structurally preventing cross-contamination of RAG (Retrieval-Augmented Generation) memory between different agent runs.
-* **Bulletproof Resilience:** Core LLM routing and network tools are wrapped in `Tenacity` exponential backoff, ensuring momentary network blips never crash a long-running research task.
+* **Per-Job Memory Namespacing:** Each background job gets a globally unique `job_id`, preventing cross-contamination of memory between different agent runs.
+* **Network & LLM Resilience:** Core LLM routing and network tools are wrapped in `Tenacity` exponential backoff, ensuring momentary network blips never crash a long-running research task.
 * **Granular Observability:** Integrated orchestration logging cleanly outputs per-iteration token consumption and exact dollar costs using `OpenAI` usage schemas.
 
 ---
@@ -39,9 +39,9 @@ graph TD
     
     Registry -->|"asyncio.gather"| WebSearch["Web Search (Tenacity + Backoff)"]
     Registry -->|"asyncio.gather"| Calc["Calculator"]
-    Registry -->|"asyncio.gather"| Memory["RAG Memory Engine"]
+    Registry -->|"asyncio.gather"| Memory["Memory Engine"]
     
-    Memory --> Isolate[("Vector Store per job_id")]
+    Memory --> Isolate[("In-memory store per job_id (embedded facts, cosine recall)")]
     
     Orchestrator -->|"Final Report"| Result[("In-Memory Job Store")]
     User -->|"GET /status/{job_id}"| Result
@@ -141,7 +141,7 @@ Want to see the orchestrator flex its muscles in real-time? We've included a ric
 The test cases include:
 1. **The Deep Synthesis Test:** Researching and synthesizing the architectural differences between FastAPI and Litestar.
 2. **The Multi-Tool Reasoning Test:** Calculating compound interest and pulling live US inflation data to estimate real returns.
-3. **Strict Isolation (Jobs A & B):** Two jobs launched at the exact same millisecond that save conflicting passwords into memory ("ALPHA" vs "OMEGA") and immediately recall them, proving perfect vector isolation.
+3. **Strict Isolation (Jobs A & B):** Two jobs launched at the exact same millisecond that save conflicting passwords into memory ("ALPHA" vs "OMEGA") and immediately recall them, proving memory isolation.
 
 ### Run the Demo
 Make sure your server is running in one terminal:
