@@ -30,6 +30,12 @@ class ResearchFinding(BaseModel):
             raise ValueError("source must be a non-empty string")
         return v.strip()
 
+    @model_validator(mode="after")
+    def validate_confidence_source(self) -> ResearchFinding:
+        if self.confidence == "high" and self.source == "agent_knowledge":
+            raise ValueError("high confidence findings cannot use 'agent_knowledge' as source")
+        return self
+
 
 class ResearchReport(BaseModel):
     """The complete, validated output of a research agent run."""

@@ -125,10 +125,7 @@ def recall_memory(query: str, *, job_id: str = "_global") -> list[dict[str, str]
 
     q = query.strip().lower()
 
-    # Special guard: sentinel queries must only match stored sentinel facts
-    if "sentinel" in q:
-        if not any("sentinel" in e["fact"].lower() for e in snapshot):
-            return []
+
 
     # Embed the query using the shared singleton model
     from tools.rag_engine import _embed

@@ -88,10 +88,10 @@ class TestMemoryCap:
         import os
         max_items = int(os.environ.get("AGENT_MAX_MEMORY", 50))
         # Fill to the cap with a distinctive first fact
-        save_memory("FIRST_FACT_SENTINEL")
+        save_memory("The password to the secret vault is 42.")
         for i in range(max_items - 1):
-            save_memory(f"filler fact {i}")
+            save_memory(f"Water boils at {100 + i} degrees Celsius.")
         # One more to trigger eviction
-        save_memory("trigger eviction")
-        results = recall_memory("FIRST_FACT_SENTINEL")
+        save_memory("The quick brown fox jumps over the lazy dog.")
+        results = recall_memory("secret vault password")
         assert results == [], "First fact should have been evicted"
